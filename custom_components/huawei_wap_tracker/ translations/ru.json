@@ -1,1 +1,59 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Настройка Huawei WAP Control",
+        "description": "Введите данные для подключения к вашему роутеру Huawei HS8545M. По умолчанию используются логин 'root' и пароль 'admin'.",
+        "data": {
+          "host": "IP-адрес роутера",
+          "username": "Имя пользователя",
+          "password": "Пароль"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Не удалось подключиться к роутеру",
+      "invalid_auth": "Неверный логин или пароль",
+      "unknown": "Непредвиденная ошибка"
+    }
+  },
+  "entity": {
+    "button": {
+      "reboot_router": {
+        "name": "Перезагрузка роутера"
+      },
+      "update_data": {
+        "name": "Обновить данные"
+      }
+    },
+    "switch": {
+      "diagnostic_mode": {
+        "name": "Режим диагностики (Красный LED)"
+      }
+    },
+    "sensor": {
+      "external_ip": {
+        "name": "Внешний IP"
+      },
+      "memory_usage": {
+        "name": "Использование памяти"
+      },
+      "cpu_load": {
+        "name": "Нагрузка CPU"
+      },
+      "optic_voltage": {
+        "name": "Оптика Вольтаж"
+      },
+      "optic_temperature": {
+        "name": "Оптика Температура"
+      },
+      "optic_rx_signal": {
+        "name": "Оптика Rx Сигнал"
+      },
+      "optic_tx_power": {
+        "name": "Оптика Tx Мощность"
+      }
+    }
+  }
+}
 
