@@ -1,0 +1,10 @@
+{
+  "domain": "huawei_wap_tracker",
+  "name": "Huawei WAP Control",
+  "version": "2.1.0",
+  "config_flow": true,
+  "documentation": "",
+  "dependencies": [],
+  "codeowners": [],
+  "iot_class": "local_polling"
+}
