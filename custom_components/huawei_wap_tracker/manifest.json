@@ -3,8 +3,9 @@
   "name": "Huawei WAP Control",
   "version": "2.1.1",
   "config_flow": true,
-  "documentation": "",
+  "documentation": "https://github.com/bieskholodov/Huawei-HS8545M",
   "dependencies": [],
-  "codeowners": [],
+  "codeowners": ["@bieskholodov"],
   "iot_class": "local_polling"
 }
+
