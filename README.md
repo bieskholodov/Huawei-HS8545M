@@ -49,7 +49,7 @@ Configuration is fully supported via the Home Assistant Frontend (UI) integratio
 ### Method 1: HACS (Recommended)
 1. Open **HACS** ➔ **Integrations**.
 2. Click the three dots `⋮` in the top right corner and select **Custom repositories**.
-3. Paste the repository URL: `https://github.com`
+3. Paste the repository URL: `https://github.com](https://github.com/bieskholodov/Huawei-HS8545M`
 4. Choose **Integration** as the category and click **Add**.
 5. Click **Download** on the Huawei WAP Control card.
 6. **Restart** Home Assistant.
