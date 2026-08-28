@@ -1,7 +1,5 @@
 # Huawei WAP Control (HS8545M)
 
-[![hacs_badge](https://shields.io)](https://github.com)
-![Version](https://shields.io)
 
 🌞 **Huawei WAP Control** is a custom component for Home Assistant that allows you to fully monitor, track, and manage your **Huawei HS8545M** WAP/ONT router via Telnet protocol. 🌐
 
