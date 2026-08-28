@@ -1,11 +1,11 @@
 {
   "domain": "huawei_wap_tracker",
   "name": "Huawei WAP Control",
-  "version": "2.1.5",
-  "config_flow": true,
-  "documentation": "https://github.com/bieskholodov/Huawei-HS8545M",
-  "dependencies": [],
   "codeowners": ["@bieskholodov"],
-  "iot_class": "local_polling"
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/bieskholodov/Huawei-HS8545M",
+  "iot_class": "local_polling",
+  "version": "2.1.5"
 }
 
