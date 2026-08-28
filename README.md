@@ -48,3 +48,7 @@ Automatically discovers and tracks all connected Wi-Fi and Ethernet devices (e.g
 1. In Home Assistant, navigate to **Settings** ➔ **Devices & Services**.
 2. Click **+ Add Integration** in the bottom right corner.
 3. Search for **Huawei WAP Control** and follow the on-screen setup flow to enter your router's credentials.
+
+> 💡 **Default Credentials:** For many Huawei HS8545M models, the default login data is:
+> * **Username:** `root`
+> * **Password:** `admin`
