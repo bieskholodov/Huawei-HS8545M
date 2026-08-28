@@ -1,7 +1,7 @@
 {
   "domain": "huawei_wap_tracker",
   "name": "Huawei WAP Control",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "config_flow": true,
   "documentation": "",
   "dependencies": [],
