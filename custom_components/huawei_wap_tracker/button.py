@@ -11,7 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 DOMAIN = "huawei_wap_tracker"
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
-    """Настройка платформы button из Config Entry."""
+    """Setup the button platform from a Config Entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     async_add_entities([
         HuaweiRefreshButton(coordinator, entry),
@@ -20,44 +20,46 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 class HuaweiRefreshButton(CoordinatorEntity, ButtonEntity):
-    """Кнопка принудительного обновления данных координатора."""
+    """Button to force update coordinator data."""
 
     def __init__(self, coordinator: DataUpdateCoordinator, entry: ConfigEntry) -> None:
-        """Инициализация."""
+        """Initialize."""
         super().__init__(coordinator)
         self._entry = entry
-        self._attr_name = "Huawei Роутер - Обновить данные"
+        self._attr_name = "Huawei Router - Update data"
+        self._attr_translation_key = "update_data"  # Ключ для файла перевода
         self._attr_unique_id = f"hw_refresh_btn_{entry.entry_id}"
         self._attr_icon = "mdi:refresh"
 
     async def async_press(self) -> None:
-        """Вызывается при нажатии кнопки обновления."""
+        """Handle the button press."""
         await self.coordinator.async_refresh()
 
     @property
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
-            name="Роутер Huawei HS8545M",
+            name="Huawei HS8545M Router",
             manufacturer="Huawei",
             model="HS8545M",
         )
 
 
 class HuaweiRebootButton(CoordinatorEntity, ButtonEntity):
-    """Кнопка аппаратной перезагрузки роутера."""
+    """Button to hardware reboot the router."""
 
     def __init__(self, coordinator: DataUpdateCoordinator, entry: ConfigEntry) -> None:
-        """Инициализация."""
+        """Initialize."""
         super().__init__(coordinator)
         self._config = entry.data
         self._entry = entry
-        self._attr_name = "Huawei Роутер - Перезагрузка роутера"
+        self._attr_name = "Huawei Router - Reboot router"
+        self._attr_translation_key = "reboot_router"  # Ключ для файла перевода
         self._attr_unique_id = f"hw_reboot_btn_{entry.entry_id}"
         self._attr_icon = "mdi:restart"
 
     def _send_reboot_command(self) -> None:
-        """Отправка проверенной команды reset платы через Telnet в фоновом потоке."""
+        """Send the verified board reset command via Telnet in an executor thread."""
         try:
             tn = telnetlib.Telnet(self._config["host"], 23, timeout=5)
             tn.read_until(b"Login:", timeout=3)
@@ -65,29 +67,22 @@ class HuaweiRebootButton(CoordinatorEntity, ButtonEntity):
             tn.read_until(b"Password:", timeout=3)
             tn.write(self._config["password"].encode('ascii') + b"\n")
             
-            # Ждем появления стандартной командной строки WAP>
             tn.read_until(b"WAP>", timeout=3)
-            
-            # Отправляем точную команду перезагрузки платы роутера
             tn.write(b"reset\n")
-            
-            # Закрываем соединение, так как роутер мгновенно начнет тушить сетевую плату
             tn.close()
-            _LOGGER.info("Команда аппаратной перезагрузки 'reset' отправлена на роутер Huawei")
+            _LOGGER.info("Hardware reboot command 'reset' sent to Huawei router")
         except Exception as e:
-            _LOGGER.error("Ошибка отправки команды перезагрузки по Telnet: %s", e)
+            _LOGGER.error("Error sending reboot command via Telnet: %s", e)
 
     async def async_press(self) -> None:
-        """Вызывается при нажатии кнопки перезагрузки в интерфейсе HA."""
-        # Выполняем Telnet команду в фоновом потоке, чтобы интерфейс HA не зависал
+        """Handle the button press in HA interface."""
         await self.hass.async_add_executor_job(self._send_reboot_command)
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Связывание кнопки с общей карточкой вашего роутера."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
-            name="Роутер Huawei HS8545M",
+            name="Huawei HS8545M Router",
             manufacturer="Huawei",
             model="HS8545M",
         )
