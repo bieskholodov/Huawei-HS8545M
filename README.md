@@ -1,54 +1,92 @@
-# Huawei-HS8545M
-
 # Huawei WAP Control (HS8545M)
 
-Custom integration for Home Assistant to monitor and control Huawei HS8545M WAP/ONT routers. This integration tracks connected devices, monitors optical signal levels, router system load, and provides remote management actions.
+[![hacs_badge](https://shields.io)](https://github.com)
+![Version](https://shields.io)
 
-## Features
-
-### 🎮 Controls & Switches
-* **Reboot Router** (`button`) — Remotely restart your Huawei router from Home Assistant.
-* **Update Data** (`button`) — Force immediate poll of all diagnostic data.
-* **Diagnostic Mode (Red LED)** (`switch`) — Toggle diagnostic LED state.
-
-### 📊 System & Optical Sensors
-* **External IP Address** — Monitors your WAN IP.
-* **CPU Load (%)** — Real-time router processor utilization.
-* **Memory Usage (%)** — Router RAM consumption.
-* **Optical Tx Power (dBm)** — Transmitting power of the fiber optic module.
-* **Optical Rx Signal (dBm)** — Received signal strength indicator (RSSI) for your fiber line.
-* **Optical Voltage (V)** — Voltage of the optical transceiver.
-* **Optical Temperature (°C)** — Temperature monitoring for the fiber module.
-
-### 📱 Device Tracking (Presence Detection)
-Automatically discovers and tracks all connected Wi-Fi and Ethernet devices (e.g., smartphones, laptops, IoT smart plugs, Tasmota/Debian servers) for home presence detection (`device_tracker`).
+🌞 **Huawei WAP Control** is a custom component for Home Assistant that allows you to fully monitor, track, and manage your **Huawei HS8545M** WAP/ONT router via Telnet protocol. 🌐
 
 ---
 
-## Installation
+## 🚀 Features
+
+When installed, this integration automatically sets up a full diagnostic board for your Huawei router, splitting entities into controls, system telemetry, and presence detection:
+
+### 🎮 Controls & Switches (`button` & `switch`)
+* **Reboot Router** (`button.reboot_router`) — Remotely trigger a hardware `reset` of the router board via Telnet without accessing the web interface.
+* **Update Data** (`button.update_data`) — Force an immediate poll of all diagnostic sensors.
+* **Diagnostic Mode (Red LED)** (`switch.diagnostic_mode`) — Intelligently toggle the router's red diagnostic LED indicator.
+
+### 📊 System & Optical Diagnostics (`sensor`)
+* **🌐 External IP Address** — Real-time tracking of your WAN external IP.
+* **🧠 Memory Usage (%)** — Router RAM consumption analytics.
+* **⚡ CPU Load (%)** — Processor utilization metrics.
+* **🔌 Optical Voltage (V)** — Current voltage supplied to the fiber transceiver module.
+* **🌡️ Optical Temperature (°C)** — Temperature monitoring of the fiber optic laser.
+* **📉 Optical Rx Signal (dBm)** — Received signal strength indicator (RSSI) of your internet fiber line.
+* **📈 Optical Tx Power (dBm)** — Transmitting signal power of the laser.
+
+### 📱 Device Tracking & Presence Detection (`device_tracker`)
+Automatically scans the router's internal connection tables to discover and track all connected Wi-Fi and Ethernet clients (smartphones, Tasmota switches, Debian servers, laptops). Perfect for accurate home **presence detection**!
+
+---
+
+## 🛠️ Configuration
+
+Configuration is fully supported via the Home Assistant Frontend (UI) integration flow.
+
+1. Navigate to **Settings** ➔ **Devices & Services**.
+2. Click **+ Add Integration** in the bottom right corner.
+3. Search for **Huawei WAP Control**.
+4. Enter your router's IP address, username, and password.
+
+> 💡 **Default Factory Credentials:**
+> For many ISP-supplied Huawei HS8545M models, the default login data is:
+> * **Username:** `root`
+> * **Password:** `admin`
+
+---
+
+## 📦 Installation
 
 ### Method 1: HACS (Recommended)
-1. Ensure **HACS** is installed in your Home Assistant.
-2. Go to **HACS** ➔ **Integrations**.
-3. Click the three dots `⋮` in the top right corner and select **Custom repositories**.
-4. Paste the repository URL: `https://github.com`
-5. Select **Integration** as the category and click **Add**.
-6. Find **Huawei WAP Control** in the list and click **Download**.
-7. **Restart** Home Assistant.
+1. Open **HACS** ➔ **Integrations**.
+2. Click the three dots `⋮` in the top right corner and select **Custom repositories**.
+3. Paste the repository URL: `https://github.com`
+4. Choose **Integration** as the category and click **Add**.
+5. Click **Download** on the Huawei WAP Control card.
+6. **Restart** Home Assistant.
 
-### Method 2: Manual Installation
-1. Download the latest release archive.
-2. Copy the `huawei_wap_tracker` folder from `custom_components/` into your Home Assistant `config/custom_components/` directory.
+### Method 2: Manual
+1. Download the latest release `.zip` or `.tar.gz` archive.
+2. Extract and copy the `huawei_wap_tracker` folder into your Home Assistant `config/custom_components/` directory.
 3. **Restart** Home Assistant.
 
 ---
 
-## Configuration
+## 📋 Entity Reference & Translation Keys
 
-1. In Home Assistant, navigate to **Settings** ➔ **Devices & Services**.
-2. Click **+ Add Integration** in the bottom right corner.
-3. Search for **Huawei WAP Control** and follow the on-screen setup flow to enter your router's credentials.
+If you want to customize or automate using these entities, here is the registry mapping table:
 
-> 💡 **Default Credentials:** For many Huawei HS8545M models, the default login data is:
-> * **Username:** `root`
-> * **Password:** `admin`
+| Entity Type | Object ID / Translation Key | Default English Name | Description |
+| :--- | :--- | :--- | :--- |
+| `button` | `update_data` | Huawei Router - Update data | Forces immediate Telnet poll |
+| `button` | `reboot_router` | Huawei Router - Reboot router | Sends `reset` command via Telnet |
+| `switch` | `diagnostic_mode` | Diagnostic mode (Red LED) | Toggles the diagnostic hardware LED |
+| `sensor` | `external_ip` | External IP | Displays current WAN IP address |
+| `sensor` | `memory_usage` | Memory usage | Displays RAM load percentage |
+| `sensor` | `cpu_load` | CPU load | Displays CPU load percentage |
+| `sensor` | `optic_voltage` | Optical voltage | Laser module power voltage |
+| `sensor` | `optic_temperature` | Optical temperature | Fiber module laser temperature |
+| `sensor` | `optic_rx_signal` | Optical Rx signal | Fiber connection line quality status |
+| `sensor` | `optic_tx_power` | Optical Tx power | Outbound fiber connection signal |
+
+---
+
+## 🌐 Localization
+
+The integration natively supports languages using the Home Assistant internal translation schema.
+* 🇬🇧 English (`en.json`)
+* 🇷🇺 Russian (`ru.json`)
+
+---
+Transform your router management experience 🏠, and monitor your fiber line connection with **Huawei WAP Control** today!
