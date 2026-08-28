@@ -1,9 +1,6 @@
 {
   "name": "Huawei WAP Control",
-  "content_in_root": false,
-  "zip_release": false,
-  "filename": null,
-  "manifest": null,
+  "homeassistant": "2025.12.0",
   "render_readme": true,
-  "country": []
+  "content_in_root": false
 }
