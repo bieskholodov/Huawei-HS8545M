@@ -85,6 +85,9 @@ If you want to customize or automate using these entities, here is the registry 
 The integration natively supports languages using the Home Assistant internal translation schema.
 * 🇬🇧 English (`en.json`)
 * 🇷🇺 Russian (`ru.json`)
+---
+## License
 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 ---
 Transform your router management experience 🏠, and monitor your fiber line connection with **Huawei WAP Control** today!
