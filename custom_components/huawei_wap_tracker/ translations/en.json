@@ -1,1 +1,59 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configure Huawei WAP Control",
+        "description": "Enter the connection details for your Huawei HS8545M router. The default username is 'root' and the default password is 'admin'.",
+        "data": {
+          "host": "Router IP Address",
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the router via Telnet",
+      "invalid_auth": "Invalid username or password",
+      "unknown": "Unexpected error"
+    }
+  },
+  "entity": {
+    "button": {
+      "update_data": {
+        "name": "Update data"
+      },
+      "reboot_router": {
+        "name": "Reboot router"
+      }
+    },
+    "switch": {
+      "diagnostic_mode": {
+        "name": "Diagnostic mode (Red LED)"
+      }
+    },
+    "sensor": {
+      "external_ip": {
+        "name": "External IP"
+      },
+      "memory_usage": {
+        "name": "Memory usage"
+      },
+      "cpu_load": {
+        "name": "CPU load"
+      },
+      "optic_voltage": {
+        "name": "Optical voltage"
+      },
+      "optic_temperature": {
+        "name": "Optical temperature"
+      },
+      "optic_rx_signal": {
+        "name": "Optical Rx signal"
+      },
+      "optic_tx_power": {
+        "name": "Optical Tx power"
+      }
+    }
+  }
+}
 
