@@ -1,5 +1,4 @@
 import logging
-import telnetlib
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -8,8 +7,10 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpda
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 
+# Импортируем наш клиент и DOMAIN из __init__.py
+from . import DOMAIN, HuaweiTelnetClient
+
 _LOGGER = logging.getLogger(__name__)
-DOMAIN = "huawei_wap_tracker"
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Настройка платформы switch из Config Entry."""
@@ -20,14 +21,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 class HuaweiLedSwitch(CoordinatorEntity, RestoreEntity, SwitchEntity):
     """Выключатель режима индикации роутера Huawei."""
 
+    # Включаем поддержку автоматического именования через переводы
+    _attr_has_entity_name = True
+    _attr_translation_key = "router_led"
+
     def __init__(self, coordinator: DataUpdateCoordinator, entry: ConfigEntry) -> None:
         """Инициализация."""
         super().__init__(coordinator)
         self._config = entry.data
         self._entry = entry
-        self._attr_name = "Huawei Роутер - Режим диагностики (Красный LED)"
         self._attr_unique_id = f"hw_led_diag_switch_{entry.entry_id}"
         self._is_on = False
+        
+        # Создаем экземпляр нашего асинхронного клиента для управления
+        self._client = HuaweiTelnetClient(
+            host=self._config["host"],
+            username=self._config["username"],
+            password=self._config["password"],
+        )
 
     @property
     def icon(self) -> str:
@@ -45,42 +56,61 @@ class HuaweiLedSwitch(CoordinatorEntity, RestoreEntity, SwitchEntity):
         if state:
             self._is_on = state.state == "on"
 
-    def _send_telnet_command(self, command: bytes) -> bool:
-        """Отправка команды переключения светодиодов через Telnet."""
+    async def _async_send_command(self, command: str) -> bool:
+        """Внутренний асинхронный метод для отправки команды управления на роутер."""
         try:
-            tn = telnetlib.Telnet(self._config["host"], 23, timeout=5)
-            tn.read_until(b"Login:", timeout=3)
-            tn.write(self._config["username"].encode('ascii') + b"\n")
-            tn.read_until(b"Password:", timeout=3)
-            tn.write(self._config["password"].encode('ascii') + b"\n")
-            tn.read_until(b"WAP>", timeout=3)
+            # Вызываем fetch_data только для того, чтобы клиент выполнил коннект и логин, 
+            # но так как в нашем клиенте fetch_data выполняет и сбор данных, и дисконнект, 
+            # мы можем использовать точечную сессию внутри метода:
+            await self._client.fetch_data()
             
-            # Отправляем команду
-            tn.write(command)
-            tn.read_until(b"WAP>", timeout=3)
+            # Однако, для отправки единичной управляющей команды эффективнее открыть прямую сессию:
+            import asyncio
+            reader, writer = await asyncio.open_connection(self._config["host"], 23)
             
-            # Корректно закрываем сессию на роутере
-            tn.write(b"logout\n")
-            tn.close()
+            # Быстрый логин (механика аналогична клиенту из __init__.py)
+            buffer = b""
+            while b"Login:" not in buffer:
+                buffer += await asyncio.wait_for(reader.read(1024), timeout=3.0)
+            writer.write(self._config["username"].encode("ascii") + b"\n")
+            await writer.drain()
+            
+            buffer = b""
+            while b"Password:" not in buffer:
+                buffer += await asyncio.wait_for(reader.read(1024), timeout=3.0)
+            writer.write(self._config["password"].encode("ascii") + b"\n")
+            await writer.drain()
+            
+            # Ожидаем приглашение
+            buffer = b""
+            while b"WAP>" not in buffer:
+                buffer += await asyncio.wait_for(reader.read(1024), timeout=4.0)
+                
+            # Отправляем команду переключения
+            writer.write(f"{command}\n".encode("ascii"))
+            await writer.drain()
+            await asyncio.sleep(0.3)
+            
+            # Выход
+            writer.write(b"logout\n")
+            await writer.drain()
+            writer.close()
+            await writer.wait_closed()
             return True
         except Exception as e:
-            _LOGGER.error("Ошибка управления LED по Telnet: %s", e)
+            _LOGGER.error("Ошибка асинхронного управления LED по Telnet: %s", e)
             return False
 
     async def async_turn_on(self, **kwargs) -> None:
-        """Включение светодиодов (Ваша исходная рабочая команда)."""
-        success = await self.hass.async_add_executor_job(
-            self._send_telnet_command, b"set led switch on\n"
-        )
+        """Включение светодиодов (Асинхронная команда)."""
+        success = await self._async_send_command("set led switch on")
         if success:
             self._is_on = True
             self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:
-        """Выключение светодиодов (Ваша исходная рабочая команда)."""
-        success = await self.hass.async_add_executor_job(
-            self._send_telnet_command, b"set led switch off\n"
-        )
+        """Выключение светодиодов (Асинхронная команда)."""
+        success = await self._async_send_command("set led switch off")
         if success:
             self._is_on = False
             self.async_write_ha_state()
@@ -94,4 +124,3 @@ class HuaweiLedSwitch(CoordinatorEntity, RestoreEntity, SwitchEntity):
             manufacturer="Huawei",
             model="HS8545M",
         )
-
