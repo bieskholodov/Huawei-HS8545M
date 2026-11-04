@@ -3,12 +3,18 @@ import asyncio
 from datetime import timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 _LOGGER = logging.getLogger(__name__)
 DOMAIN = "huawei_wap_tracker"
 PLATFORMS = ["device_tracker", "button", "sensor", "switch"]
+
+
+class InvalidAuth(HomeAssistantError):
+    """Ошибка аутентификации на роутере."""
+
 
 class HuaweiTelnetClient:
     """Асинхронный клиент для сбора данных с роутера Huawei."""
@@ -60,8 +66,12 @@ class HuaweiTelnetClient:
             self.writer.write(self.password.encode("ascii") + b"\n")
             await self.writer.drain()
             
-            # Ожидаем базовое приглашение командной строки после успешного входа
-            await self._read_until(b"WAP>", timeout=5.0)
+            # Ожидаем базовое приглашение командной строки после ввода пароля
+            auth_buffer = await self._read_until(b"WAP>", timeout=5.0)
+            
+            # Проверяем, появилось ли приглашение WAP>. Если нет — пароль неверный!
+            if b"WAP>" not in auth_buffer:
+                raise InvalidAuth("Не удалось получить приглашение WAP>. Неверный логин или пароль.")
             
             # Сбор 1: Использование процессора, памяти и системное время
             sys_text = await self._send_command("display sysinfo")
@@ -82,6 +92,9 @@ class HuaweiTelnetClient:
             self.writer.write(b"logout\n")
             await self.writer.drain()
             
+        except InvalidAuth:
+            # Не перехватываем ошибку авторизации как общую ошибку связи
+            raise
         except Exception as e:
             _LOGGER.error("Telnet communication error with Huawei Router at %s: %s", self.host, e)
             raise UpdateFailed(f"Сбой связи Telnet: {e}")
