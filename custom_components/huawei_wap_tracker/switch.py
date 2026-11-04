@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -23,7 +24,7 @@ class HuaweiLedSwitch(CoordinatorEntity, RestoreEntity, SwitchEntity):
 
     # Включаем поддержку автоматического именования через переводы
     _attr_has_entity_name = True
-    _attr_translation_key = "router_led"
+    _attr_translation_key = "diagnostic_mode"
 
     def __init__(self, coordinator: DataUpdateCoordinator, entry: ConfigEntry) -> None:
         """Инициализация."""
@@ -59,13 +60,7 @@ class HuaweiLedSwitch(CoordinatorEntity, RestoreEntity, SwitchEntity):
     async def _async_send_command(self, command: str) -> bool:
         """Внутренний асинхронный метод для отправки команды управления на роутер."""
         try:
-            # Вызываем fetch_data только для того, чтобы клиент выполнил коннект и логин, 
-            # но так как в нашем клиенте fetch_data выполняет и сбор данных, и дисконнект, 
-            # мы можем использовать точечную сессию внутри метода:
-            await self._client.fetch_data()
-            
-            # Однако, для отправки единичной управляющей команды эффективнее открыть прямую сессию:
-            import asyncio
+            # Прямая точечная сессия без предварительного тяжелого вызова fetch_data()
             reader, writer = await asyncio.open_connection(self._config["host"], 23)
             
             # Быстрый логин (механика аналогична клиенту из __init__.py)
