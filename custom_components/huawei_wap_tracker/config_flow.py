@@ -3,8 +3,8 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_USERNAME, CONF_PASSWORD
 
-# Импортируем наш асинхронный клиент и DOMAIN из __init__.py
-from . import DOMAIN, HuaweiTelnetClient
+# Импортируем наш асинхронный клиент, DOMAIN и исключение InvalidAuth из __init__.py
+from . import DOMAIN, HuaweiTelnetClient, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,9 +34,13 @@ class HuaweiWapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     title=user_input[CONF_HOST], 
                     data=user_input
                 )
+            except InvalidAuth as err:
+                _LOGGER.warning("Ошибка аутентификации Telnet при настройке: %s", err)
+                # Возвращаем ключ ошибки для неверных учетных данных
+                errors["base"] = "invalid_auth"
             except Exception as err:
                 _LOGGER.error("Ошибка валидации Telnet при настройке: %s", err)
-                # Возвращаем ключ ошибки, который будет переведен через en.json/ru.json
+                # Возвращаем ключ ошибки отсутствия связи
                 errors["base"] = "cannot_connect"
 
         # Схема формы ввода (строки теперь будут локализованы через translation_key)
