@@ -1,5 +1,6 @@
+# custom_components/huawei_wap_tracker/switch.py
+
 import logging
-import asyncio
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -8,15 +9,17 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpda
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 
-# Импортируем наш клиент и DOMAIN из __init__.py
-from . import DOMAIN, HuaweiTelnetClient
+# Импортируем DOMAIN из __init__.py
+from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Настройка платформы switch из Config Entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    async_add_entities([HuaweiLedSwitch(coordinator, entry)])
+    client = hass.data[DOMAIN][entry.entry_id]["client"]
+    
+    async_add_entities([HuaweiLedSwitch(coordinator, entry, client)])
 
 
 class HuaweiLedSwitch(CoordinatorEntity, RestoreEntity, SwitchEntity):
@@ -26,20 +29,13 @@ class HuaweiLedSwitch(CoordinatorEntity, RestoreEntity, SwitchEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "diagnostic_mode"
 
-    def __init__(self, coordinator: DataUpdateCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: DataUpdateCoordinator, entry: ConfigEntry, client) -> None:
         """Инициализация."""
         super().__init__(coordinator)
-        self._config = entry.data
         self._entry = entry
+        self.client = client
         self._attr_unique_id = f"hw_led_diag_switch_{entry.entry_id}"
         self._is_on = False
-        
-        # Создаем экземпляр нашего асинхронного клиента для управления
-        self._client = HuaweiTelnetClient(
-            host=self._config["host"],
-            username=self._config["username"],
-            password=self._config["password"],
-        )
 
     @property
     def icon(self) -> str:
@@ -57,58 +53,25 @@ class HuaweiLedSwitch(CoordinatorEntity, RestoreEntity, SwitchEntity):
         if state:
             self._is_on = state.state == "on"
 
-    async def _async_send_command(self, command: str) -> bool:
-        """Внутренний асинхронный метод для отправки команды управления на роутер."""
-        try:
-            # Прямая точечная сессия без предварительного тяжелого вызова fetch_data()
-            reader, writer = await asyncio.open_connection(self._config["host"], 23)
-            
-            # Быстрый логин (механика аналогична клиенту из __init__.py)
-            buffer = b""
-            while b"Login:" not in buffer:
-                buffer += await asyncio.wait_for(reader.read(1024), timeout=3.0)
-            writer.write(self._config["username"].encode("ascii") + b"\n")
-            await writer.drain()
-            
-            buffer = b""
-            while b"Password:" not in buffer:
-                buffer += await asyncio.wait_for(reader.read(1024), timeout=3.0)
-            writer.write(self._config["password"].encode("ascii") + b"\n")
-            await writer.drain()
-            
-            # Ожидаем приглашение
-            buffer = b""
-            while b"WAP>" not in buffer:
-                buffer += await asyncio.wait_for(reader.read(1024), timeout=4.0)
-                
-            # Отправляем команду переключения
-            writer.write(f"{command}\n".encode("ascii"))
-            await writer.drain()
-            await asyncio.sleep(0.3)
-            
-            # Выход
-            writer.write(b"logout\n")
-            await writer.drain()
-            writer.close()
-            await writer.wait_closed()
-            return True
-        except Exception as e:
-            _LOGGER.error("Ошибка асинхронного управления LED по Telnet: %s", e)
-            return False
-
     async def async_turn_on(self, **kwargs) -> None:
-        """Включение светодиодов (Асинхронная команда)."""
-        success = await self._async_send_command("set led switch on")
-        if success:
+        """Включение светодиодов через центральный асинхронный клиент."""
+        try:
+            # Выполняем точечную команду через безопасную сессию общего клиента
+            await self.client.execute_single_command("set led switch on")
             self._is_on = True
             self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.error("Ошибка переключения светодиодов роутера (on): %s", e)
 
     async def async_turn_off(self, **kwargs) -> None:
-        """Выключение светодиодов (Асинхронная команда)."""
-        success = await self._async_send_command("set led switch off")
-        if success:
+        """Выключение светодиодов через центральный асинхронный клиент."""
+        try:
+            # Выполняем точечную команду через безопасную сессию общего клиента
+            await self.client.execute_single_command("set led switch off")
             self._is_on = False
             self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.error("Ошибка переключения светодиодов роутера (off): %s", e)
 
     @property
     def device_info(self) -> DeviceInfo:
