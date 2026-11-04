@@ -2,7 +2,7 @@ import re
 import logging
 from datetime import datetime, timedelta
 from homeassistant.core import callback, HomeAssistant
-from homeassistant.components.device_tracker import TrackerEntity, SourceType
+from homeassistant.components.device_tracker import ScannerEntity, SourceType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator
@@ -61,8 +61,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     parse_and_add()
 
 
-class HuaweiRouterDevice(CoordinatorEntity, TrackerEntity):
-    """Динамическая сущность сетевого клиента роутера Huawei."""
+class HuaweiRouterDevice(CoordinatorEntity, ScannerEntity):
+    """Динамическая сущность сетевого клиента роутера Huawei на базе ScannerEntity."""
 
     def __init__(self, coordinator: DataUpdateCoordinator, mac: str, entry: ConfigEntry) -> None:
         """Инициализация."""
@@ -92,10 +92,12 @@ class HuaweiRouterDevice(CoordinatorEntity, TrackerEntity):
 
     @property
     def source_type(self) -> SourceType:
+        """Возвращает тип источника трекера."""
         return SourceType.ROUTER
 
     @property
     def mac_address(self) -> str:
+        """Возвращает MAC-адрес устройства для ScannerEntity."""
         return self._mac
 
     @property
