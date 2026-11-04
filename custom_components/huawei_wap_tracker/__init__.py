@@ -3,7 +3,7 @@ import asyncio
 from datetime import timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -27,12 +27,16 @@ class HuaweiTelnetClient:
         self.writer = None
 
     async def _read_until(self, expected: bytes, timeout: float = 4.0) -> bytes:
-        """Вспомогательный метод для чтения буфера до ожидаемой строки."""
+        """Вспомогательный метод для чтения буфера до ожидаемой строки с защитой от пустых байт."""
         buffer = b""
         try:
             while expected not in buffer:
+                # Читаем порцию данных с таймаутом
                 data = await asyncio.wait_for(self.reader.read(1024), timeout=timeout)
                 if not data:
+                    # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Если роутер закрыл сокет, данные больше не придут.
+                    # Немедленно выходим из цикла, чтобы не замораживать поток выполнения Home Assistant.
+                    _LOGGER.debug("Роутер закрыл соединение (получен пустой байт) до обнаружения: %s", expected)
                     break
                 buffer += data
         except asyncio.TimeoutError:
@@ -45,10 +49,50 @@ class HuaweiTelnetClient:
             return ""
         self.writer.write(command.encode("ascii") + b"\n")
         await self.writer.drain()
-        await asyncio.sleep(0.3)  # Замена старого time.sleep(0.3)
+        await asyncio.sleep(0.3)
         
         data = await self._read_until(b"WAP>", timeout=timeout)
         return data.decode("utf-8", errors="ignore")
+
+    async def execute_single_command(self, command: str) -> str:
+        """Метод для выполнения одиночной команды (используется кнопками и переключателями)."""
+        try:
+            self.reader, self.writer = await asyncio.open_connection(self.host, 23)
+            
+            # Авторизация: Логин
+            await self._read_until(b"Login:", timeout=3.0)
+            self.writer.write(self.username.encode("ascii") + b"\n")
+            await self.writer.drain()
+            
+            # Авторизация: Пароль
+            await self._read_until(b"Password:", timeout=3.0)
+            self.writer.write(self.password.encode("ascii") + b"\n")
+            await self.writer.drain()
+            
+            # Проверка приглашения
+            auth_buffer = await self._read_until(b"WAP>", timeout=5.0)
+            if b"WAP>" not in auth_buffer:
+                raise InvalidAuth("Не удалось получить приглашение WAP>. Неверный логин или пароль.")
+            
+            # Выполнение целевой команды
+            result = await self._send_command(command)
+            
+            # Выход
+            self.writer.write(b"logout\n")
+            await self.writer.drain()
+            return result
+            
+        except InvalidAuth:
+            raise
+        except Exception as e:
+            _LOGGER.error("Ошибка выполнения команды через Telnet (%s): %s", command, e)
+            raise HomeAssistantError(f"Сбой выполнения команды: {e}")
+        finally:
+            if self.writer:
+                self.writer.close()
+                await self.writer.wait_closed()
+                self.writer = None
+                self.reader = None
 
     async def fetch_data(self) -> dict:
         """Установка соединения и последовательный сбор всех метрик."""
@@ -93,7 +137,6 @@ class HuaweiTelnetClient:
             await self.writer.drain()
             
         except InvalidAuth:
-            # Не перехватываем ошибку авторизации как общую ошибку связи
             raise
         except Exception as e:
             _LOGGER.error("Telnet communication error with Huawei Router at %s: %s", self.host, e)
@@ -122,7 +165,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def async_update_data():
         """Асинхронный метод обновления данных координатора."""
-        return await client.fetch_data()
+        try:
+            return await client.fetch_data()
+        except InvalidAuth as err:
+            # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Перехватываем ошибку и перенаправляем ее во ConfigEntryAuthFailed.
+            # Это прекратит бесконечные trace-логи каждые 30 секунд и автоматически запустит шаг reauth.
+            raise ConfigEntryAuthFailed("Учетные данные больше не действительны. Требуется повторная авторизация.") from err
 
     coordinator = DataUpdateCoordinator(
         hass,
@@ -138,7 +186,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "config": config,
-        "coordinator": coordinator
+        "coordinator": coordinator,
+        "client": client  # Сохраняем клиент для вызова из switch.py и button.py
     }
 
     # Регистрация устройства в Device Registry Home Assistant
@@ -160,4 +209,4 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
-    return True
+    return unload_ok  # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Возвращаем результат выгрузки платформ (unload_ok), а не жесткое True.
